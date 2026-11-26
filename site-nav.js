@@ -9,6 +9,7 @@
     ["top", "Home", "Inicio"],
     ["active", "Active sighting", "Avistamiento activo"],
     ["totals", "Totals", "Totales"],
+    ["map3d", "Map", "Mapa"],
     ["schools", "High school students", "Estudiantes de preparatoria"],
     ["outlook", "Outlook", "Pronóstico"],
     ["patterns", "Patterns", "Patrones"],
