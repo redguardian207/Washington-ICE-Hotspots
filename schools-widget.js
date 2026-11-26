@@ -144,8 +144,8 @@
     var sec = document.createElement("section");
     sec.id = "schools";
     sec.className = "hs-card";
-    sec.innerHTML = "<h2>" + T("High school students", "Estudiantes de preparatoria") + "</h2>"
-      + "<p>" + T("Find your school to see your rights, get help, and read or share how ICE has affected students and families in your county.", "Busca tu escuela para ver tus derechos, pedir ayuda y leer o contar cómo ICE ha afectado a estudiantes y familias en tu condado.") + "</p>"
+    sec.innerHTML = "<h2><strong>" + T("High school students", "Estudiantes de preparatoria") + "</strong></h2>"
+      + "<p><strong>" + T("Find your school to see your rights, get help, and read or share how ICE has affected students and families in your county.", "Busca tu escuela para ver tus derechos, pedir ayuda y leer o contar cómo ICE ha afectado a estudiantes y familias en tu condado.") + "</strong></p>"
       + '<input class="sc-search" id="sc-q" type="search" autocomplete="off">'
       + '<div class="sc-chips" id="sc-chips"></div><div id="sc-body"><p>' + T("Loading schools…", "Cargando escuelas…") + "</p></div>"
       + '<p class="sc-c">' + T("School list from Wikipedia's list of Washington high schools.", "Lista de escuelas de la lista de preparatorias de Washington en Wikipedia.") + "</p>";
