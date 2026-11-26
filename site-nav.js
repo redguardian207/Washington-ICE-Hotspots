@@ -83,7 +83,7 @@
       var a = e.target.closest("a");
       if (!a) return;
       var el = document.getElementById(a.getAttribute("href").slice(1));
-      if (el) { e.preventDefault(); el.scrollIntoView({ behavior: "smooth", block: "start" }); history.replaceState(null, "", a.getAttribute("href")); }
+      if (el) { e.preventDefault(); reveal(el); history.replaceState(null, "", a.getAttribute("href")); }
       bar.classList.remove("open"); btn.setAttribute("aria-expanded", "false");
     });
 
@@ -124,6 +124,20 @@
     document.querySelectorAll("#st-stories, #st-stories .notranslate, #schools, .st-section").forEach(function (el) {
       el.classList.remove("notranslate");
       el.removeAttribute("translate");
+    });
+  }
+
+  // Jump straight to a section, then fade the page in slowly, like the photos on the opening screen.
+  function reveal(el) {
+    var root = document.documentElement, prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    el.scrollIntoView({ behavior: "instant", block: "start" });
+    root.style.scrollBehavior = prev;
+    if (el.classList.contains("mo-in")) el.classList.add("mo-show");
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    [].forEach.call(document.body.children, function (c) {
+      if (c.id === "sn-bar" || c.id === "sn-btn" || !c.animate || c.tagName === "SCRIPT" || c.tagName === "STYLE") return;
+      c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1600, easing: "ease-in-out" });
     });
   }
 
