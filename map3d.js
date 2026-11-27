@@ -90,6 +90,9 @@
     const after = document.getElementById('totals');
     if (after && after.parentNode) after.parentNode.insertBefore(sec, after.nextSibling);
     else (document.querySelector('main') || document.body).appendChild(sec);
+    // Point the "See the map" button at the top of the page to this map.
+    const relink = () => { const a = document.querySelector('a.st-btn[href="#st-skip"]'); if (a) { a.setAttribute('href', '#map3d'); return true; } return false; };
+    if (!relink()) { let n = 0; const t = setInterval(() => { if (relink() || ++n > 20) clearInterval(t); }, 500); }
     fetch('data.json', { cache: 'no-store' }).then((r) => r.json()).then((rows) => draw(sec, rows)).catch(() => {
       sec.querySelector('.m3-world').innerHTML = '<p style="padding:40px;text-align:center">' + T('The map could not load. Try reloading the page.', 'No se pudo cargar el mapa. Vuelve a cargar la página.') + '</p>';
     });
@@ -178,6 +181,7 @@
     });
     const up = () => { if (down && !moved && !is3d) go3d(); down = null; if (!spin) world.classList.remove('drag'); };
     stage.addEventListener('pointerup', up);
+    sec.querySelector('.m3-go').addEventListener('click', go3d);
     stage.addEventListener('pointerleave', () => { tip.classList.remove('on'); down = null; if (!spin) world.classList.remove('drag'); });
 
     size();
