@@ -3,7 +3,7 @@
 (function () {
   var FORM = "https://formspree.io/f/maeoqrdp";
   var WIKI = "https://en.wikipedia.org/w/api.php?action=parse&page=List_of_high_schools_in_Washington_(state)&prop=text&format=json&formatversion=2&origin=*";
-  var CACHE = "wa-hs-v1";
+  var CACHE = "wa-hs-v2", LOOKS = "wa-hs-looks-v1";
   var NOT_PUBLIC = /christian|catholic|adventist|lutheran|baptist|jesuit|seminary|holy names|bishop|saint |st\. |bible|islamic|jewish|waldorf|montessori|juvenile|detention|correction|justice center|overlake|annie wright|charles wright|bush school|lakeside school|northwest school|forest ridge|bellarmine|o'dea|gonzaga|archbishop|seattle academy|university prep|eastside prep|tri-cities prep|dartmoor|king's|cristo rey|private/i;
   var RED = "#e0141e";
 
@@ -24,6 +24,15 @@
     + "#schools .sc-list{list-style:none;margin:0;padding:0;max-height:420px;overflow-y:auto}"
     + "#schools .sc-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;background:#fff;border:0;border-bottom:1px solid #efefef;padding:10px 4px;cursor:pointer;color:#000}"
     + "#schools .sc-row:hover{background:#fff6f6}"
+    + "#schools .sc-row[data-look] .sc-av{background:var(--s1);color:var(--s1t);box-shadow:inset 0 0 0 3px var(--s2),0 0 0 2px var(--s1)}"
+    + "#schools .sc-open[data-look]{border-color:var(--s1);background:linear-gradient(180deg,color-mix(in srgb,var(--s1) 14%,#fff),#fff 160px)}"
+    + "#schools .sc-open[data-look] .sc-box{background:color-mix(in srgb,var(--s1) 9%,#fff)}"
+    + "#schools .sc-open[data-look] .sc-box b,#schools .sc-open[data-look] .sc-who{color:var(--s1d)}"
+    + "#schools .sc-open[data-look] .sc-call,#schools .sc-open[data-look] .sc-send{background:var(--s1);color:var(--s1t)!important;box-shadow:0 0 0 3px var(--s2)}"
+    + "#schools .sc-emb{float:right;width:92px;height:104px;margin:0 0 8px 12px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.2));animation:scEmb .6s cubic-bezier(.2,.8,.2,1)}"
+    + "@keyframes scEmb{from{transform:scale(.6) rotate(-8deg);opacity:0}}"
+    + "#schools .sc-mascot{display:inline-block;margin-top:8px;font-weight:800;color:var(--s1t);background:var(--s1);border:2px solid var(--s2);border-radius:999px;padding:4px 12px}"
+    + "#schools .sc-cols{display:flex;gap:6px;margin-top:8px}#schools .sc-cols i{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}"
     + "#schools .sc-av{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:" + RED + ";box-shadow:inset 0 0 0 3px #fff,0 0 0 2px " + RED + "}"
     + "#schools .sc-n{font-weight:700;font-size:1.05rem}#schools .sc-c{font-size:.9rem;color:#444}"
     + "#schools .sc-open{border:2px solid " + RED + ";border-radius:18px;padding:16px;margin:12px 0;background:#fff;animation:scIn .25s ease}"
@@ -61,7 +70,8 @@
         var i = txt.indexOf(", "), name = i > 0 ? txt.slice(0, i) : txt, city = i > 0 ? txt.slice(i + 2) : h3;
         var key = name + "|" + c;
         if (seen[key]) continue; seen[key] = 1;
-        out.push({ n: name, c: city.trim(), k: c });
+        var a = n.querySelector("a[href^='/wiki/']");
+        out.push({ n: name, c: city.trim(), k: c, w: a ? (a.getAttribute("title") || "") : "" });
       }
     }
     return out;
@@ -83,6 +93,103 @@
     return fetch("school-board.json?x=" + Date.now()).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
   }
 
+  // School colors and mascot, read from each school's Wikipedia infobox and cached for 30 days.
+  var looks = {}, want = {}, asked = {}, timer = 0;
+  try { var lc = JSON.parse(localStorage.getItem(LOOKS) || "null"); if (lc && lc.at > Date.now() - 30 * 864e5) looks = lc.v || {}; } catch (e) {}
+  var NAMED = { "old gold": "#cfb53b", "vegas gold": "#c5b358", "athletic gold": "#ffb81c", "metallic gold": "#d4af37", "kelly green": "#4cbb17", "forest green": "#228b22", "hunter green": "#355e3b", "dark green": "#00563f", "royal blue": "#2251c4", "navy blue": "#14295b", "columbia blue": "#9bcbeb", "carolina blue": "#7bafd4", "light blue": "#6cace4", "sky blue": "#62b5e5", "powder blue": "#9bc4e2", "dark blue": "#1f2a5c", "cardinal red": "#c41e3a", "scarlet": "#d21f3c", "crimson": "#a6192e", "cardinal": "#c41e3a", "maroon": "#7a1f2b", "burgundy": "#800020", "garnet": "#7b1e2e", "red": "#c8102e", "orange": "#ff7f1f", "gold": "#ffc72c", "yellow": "#ffd100", "green": "#00843d", "teal": "#00838f", "turquoise": "#30b0b5", "blue": "#0b4ea2", "navy": "#14295b", "purple": "#582c83", "violet": "#6d3fa0", "black": "#111111", "white": "#ffffff", "silver": "#a7a8aa", "gray": "#7a7d80", "grey": "#7a7d80", "brown": "#6b3e26", "cream": "#f3e5c0", "emerald": "#00915a", "pink": "#e75480", "copper": "#b87333", "bronze": "#a97142", "tan": "#c9a66b" };
+  var NAMES = Object.keys(NAMED).sort(function (a, b) { return b.length - a.length; });
+  function clean(v) {
+    return v.replace(/<ref[^>]*\/>/g, "").replace(/<ref[\s\S]*?<\/ref>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]+>/g, " ")
+      .replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, "$1").replace(/\{\{[^{}]*\}\}/g, " ").replace(/'{2,}/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function field(txt, names) {
+    var m = txt.match(new RegExp("\\n\\s*\\|\\s*(?:" + names + ")\\s*=[ \\t]*([\\s\\S]*?)(?=\\n\\s*\\||\\n\\s*\\}\\})", "i"));
+    return m ? m[1].trim() : "";
+  }
+  function colorsOf(raw) {
+    raw = raw.replace(/\{\{\s*colou?r ?box\s*\|\s*([^|}]+)[^}]*\}\}/gi, " $1 ");
+    var out = [], m, re = /#([0-9a-f]{6}|[0-9a-f]{3})\b/gi;
+    while ((m = re.exec(raw)) && out.length < 3) out.push("#" + m[1].toLowerCase());
+    if (out.length >= 2) return out;
+    var words = " " + clean(raw).toLowerCase() + " ", hits = [];
+    NAMES.forEach(function (k) {
+      var re2 = new RegExp("[^a-z]" + k + "(?=[^a-z])"), mm;
+      while ((mm = re2.exec(words))) { hits.push([mm.index, NAMED[k]]); words = words.slice(0, mm.index + 1) + " ".repeat(k.length) + words.slice(mm.index + 1 + k.length); }
+    });
+    hits.sort(function (a, b) { return a[0] - b[0]; });
+    return out.concat(hits.map(function (h) { return h[1]; })).slice(0, 3);
+  }
+  function lum(h) {
+    h = h.replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&");
+    var c = [0, 2, 4].map(function (i) { var v = parseInt(h.substr(i, 2), 16) / 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+    return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+  }
+  function lookOf(txt) {
+    var cols = colorsOf(field(txt, "colou?rs|school_colou?rs|colou?r")).filter(function (c, i, a) { return a.indexOf(c) === i; });
+    // Lead with a strong color; white or very light ones go second.
+    cols.sort(function (a, b) { return (lum(a) > .8) - (lum(b) > .8); });
+    var mascot = clean(field(txt, "mascot|nickname|team_name|athletics_nickname")).replace(/^the\s+/i, "").split(/[,;(]| and /)[0].trim();
+    if (mascot.length > 40) mascot = "";
+    if (!cols.length && !mascot) return null;
+    return { c: cols, m: mascot };
+  }
+  function lookStyle(lk) {
+    if (!lk || !lk.c || !lk.c.length) return "";
+    var a = lk.c[0], b = lk.c[1] || "#ffffff", light = lum(a) > .45;
+    return ' data-look="1" style="--s1:' + a + ";--s2:" + b + ";--s1t:" + (light ? "#000" : "#fff") + ";--s1d:" + (light ? "#333" : a) + '"';
+  }
+  function emblem(s, lk) {
+    if (!lk || !lk.c || !lk.c.length) return "";
+    var a = lk.c[0], b = lk.c[1] || "#ffffff", fg = lum(a) > .45 ? "#111" : "#fff";
+    var ch = esc((lk.m || s.n).charAt(0).toUpperCase());
+    return '<svg class="sc-emb" viewBox="0 0 92 104" aria-hidden="true"><path d="M46 3 L87 16 V50 C87 76 68 93 46 101 C24 93 5 76 5 50 V16 Z" fill="' + b + '" stroke="' + a + '" stroke-width="4"/>'
+      + '<path d="M46 13 L78 23 V50 C78 70 64 84 46 91 C28 84 14 70 14 50 V23 Z" fill="' + a + '"/>'
+      + '<text x="46" y="64" text-anchor="middle" font-size="40" font-weight="900" font-family="Georgia,serif" fill="' + fg + '" stroke="' + b + '" stroke-width="1.2">' + ch + "</text></svg>";
+  }
+  function saveLooks() { try { localStorage.setItem(LOOKS, JSON.stringify({ at: Date.now(), v: looks })); } catch (e) {} }
+  function fetchLooks() {
+    timer = 0;
+    var titles = Object.keys(want).slice(0, 20);
+    titles.forEach(function (t) { delete want[t]; asked[t] = 1; });
+    if (!titles.length) return;
+    var url = "https://en.wikipedia.org/w/api.php?action=query&prop=revisions&rvprop=content&rvslots=main&redirects=1&format=json&formatversion=2&origin=*&titles=" + encodeURIComponent(titles.join("|"));
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      var q = j.query || {}, back = {};
+      (q.normalized || []).concat(q.redirects || []).forEach(function (x) { back[x.to] = (back[x.to] || []).concat(back[x.from] || [x.from]); });
+      (q.pages || []).forEach(function (p) {
+        var txt = p.revisions && p.revisions[0] && p.revisions[0].slots && p.revisions[0].slots.main.content;
+        var lk = txt ? lookOf(txt) : null;
+        [p.title].concat(back[p.title] || []).forEach(function (t) { looks[t] = lk || 0; });
+      });
+      titles.forEach(function (t) { if (!(t in looks)) looks[t] = 0; });
+      saveLooks(); paint();
+    }).catch(function () {}).then(function () { if (Object.keys(want).length && !timer) timer = setTimeout(fetchLooks, 200); });
+  }
+  var io = window.IntersectionObserver ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      var w = e.isIntersecting && e.target.getAttribute("data-w");
+      if (w && !(w in looks) && !asked[w]) { want[w] = 1; if (!timer) timer = setTimeout(fetchLooks, 250); }
+    });
+  }, { rootMargin: "300px" }) : null;
+  function watchRows(box) {
+    if (!io) return;
+    io.disconnect();
+    box.querySelectorAll(".sc-row[data-w]").forEach(function (r) { if (r.getAttribute("data-w")) io.observe(r); });
+  }
+  // Fill in colors without rebuilding the list, so the search box and the open school stay as they are.
+  function paint() {
+    var box = document.getElementById("sc-body"); if (!box) return;
+    var needOpen = false;
+    box.querySelectorAll(".sc-row[data-w]").forEach(function (r) {
+      var lk = looks[r.getAttribute("data-w")];
+      if (!lk || r.hasAttribute("data-look")) return;
+      var m = lookStyle(lk).match(/style="([^"]*)"/); if (!m) return;
+      r.setAttribute("data-look", "1"); r.setAttribute("style", m[1]);
+      if (r.getAttribute("aria-expanded") === "true") needOpen = true;
+    });
+    if (needOpen) { var y = window.scrollY; render(); window.scrollTo(0, y); }
+  }
+
   function rowsHTML() {
     var q = query.toLowerCase();
     var list = schools.filter(function (s) {
@@ -90,7 +197,7 @@
     }).slice(0, 150);
     if (!list.length) return '<p>' + T("No schools match. Try another name or town.", "No hay escuelas con ese nombre. Prueba otro nombre o ciudad.") + "</p>";
     return '<ul class="sc-list">' + list.map(function (s) {
-      var key = s.n + "|" + s.k, html = '<li><button class="sc-row" data-key="' + esc(key) + '" aria-expanded="' + (key === openKey) + '">'
+      var key = s.n + "|" + s.k, html = '<li><button class="sc-row" data-key="' + esc(key) + '" data-w="' + esc(s.w || "") + '" aria-expanded="' + (key === openKey) + '"' + lookStyle(looks[s.w]) + '>'
         + '<span class="sc-av">' + esc(s.n.charAt(0)) + '</span><span><span class="sc-n">' + esc(s.n) + '</span><br><span class="sc-c">' + esc((s.c ? s.c + " · " : "") + s.k) + "</span></span></button></li>";
       if (key === openKey) html += "<li>" + openHTML(s) + "</li>";
       return html;
@@ -99,7 +206,10 @@
 
   function openHTML(s) {
     var posts = board.filter(function (p) { return p.county === s.k; });
-    return '<div class="sc-open"><h3>' + esc(s.n) + "</h3><div class=\"sc-c\">" + esc((s.c ? s.c + " · " : "") + s.k) + "</div>"
+    var lk = looks[s.w];
+    return '<div class="sc-open"' + lookStyle(lk) + ">" + emblem(s, lk) + "<h3>" + esc(s.n) + "</h3><div class=\"sc-c\">" + esc((s.c ? s.c + " · " : "") + s.k) + "</div>"
+      + (lk && lk.m ? '<div class="sc-mascot">' + T("Home of the ", "Hogar de los ") + esc(lk.m) + "</div>" : "")
+      + (lk && lk.c && lk.c.length ? '<div class="sc-cols">' + lk.c.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + "</div>" : "")
       + '<div class="sc-box"><b>' + T("Your rights at school", "Tus derechos en la escuela") + "</b><ul>"
       + "<li>" + T("Every kid in Washington can go to public school, no matter their or their family's immigration status.", "Todo niño en Washington puede ir a la escuela pública, sin importar su estatus migratorio o el de su familia.") + "</li>"
       + "<li>" + T("Your school can't deny you enrollment because of immigration status, and it can't reach out to immigration agents to share your information.", "Tu escuela no puede negarte la inscripción por tu estatus migratorio, ni puede contactar a agentes de inmigración para compartir tu información.") + "</li>"
@@ -128,6 +238,7 @@
     var box = document.getElementById("sc-body");
     if (!box) return;
     box.innerHTML = rowsHTML();
+    watchRows(box);
   }
 
   function chips() {
@@ -161,7 +272,11 @@
       var chip = e.target.closest(".sc-chip");
       if (chip) { county = chip.getAttribute("data-c"); openKey = ""; chips(); render(); return; }
       var row = e.target.closest(".sc-row");
-      if (row) { var k = row.getAttribute("data-key"); openKey = openKey === k ? "" : k; render(); }
+      if (row) {
+        var k = row.getAttribute("data-key"), w = row.getAttribute("data-w"); openKey = openKey === k ? "" : k;
+        if (w && !(w in looks) && !asked[w]) { want[w] = 1; clearTimeout(timer); timer = setTimeout(fetchLooks, 0); }
+        render();
+      }
     });
 
     sec.addEventListener("submit", function (e) {
