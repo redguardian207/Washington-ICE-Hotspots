@@ -80,7 +80,8 @@ body.xp-lock{overflow:hidden}
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'xp-btn';
     b.innerHTML = ICON + '<span>' + T('Expand', 'Ampliar') + '</span>';
-    b.addEventListener('click', () => expand(sec, b));
+    // stopPropagation keeps the page's own tap-for-details dialog from opening too.
+    b.addEventListener('click', (e) => { e.stopPropagation(); expand(sec, b); });
     sec.appendChild(b);
   }
 
@@ -95,8 +96,8 @@ body.xp-lock{overflow:hidden}
       const vz = e.target.closest('.vz');
       if (!vz || open) return;
       const sec = vz.closest('section');
-      if (sec) expand(sec, null);
-    });
+      if (sec) { e.stopPropagation(); expand(sec, null); }
+    }, true);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
     scan();
     // Some sections (schools, map) are added by other scripts after load.
