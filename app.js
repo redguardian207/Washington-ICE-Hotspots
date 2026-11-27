@@ -18,7 +18,26 @@
   const t = (k) => TX[k][L()] || TX[k].en;
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js', { scope: './' }).then(alertsInit).catch(() => {}); });
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' }).then((reg) => {
+        alertsInit(reg);
+        const check = () => reg.update().catch(() => {});
+        setInterval(check, 15 * 60 * 1000);
+      }).catch(() => {});
+    });
+    // Auto-update: if the app sat in the background 5+ minutes, reload when it comes back
+    // so people always get the newest version without reinstalling.
+    let hiddenAt = 0;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && navigator.onLine) location.reload();
+    });
+    // When a new sw.js takes over, reload once so the page matches it
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
   }
 
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
