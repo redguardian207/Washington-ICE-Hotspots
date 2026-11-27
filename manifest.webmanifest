@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Washington ICE Hotspots",
+  "short_name": "WA ICE",
+  "description": "Where ICE activity has been reported across Washington State. Community reports and news, updated every hour.",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#e0141e",
+  "lang": "en",
+  "categories": ["news", "social"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
