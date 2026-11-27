@@ -3,7 +3,7 @@
 (function () {
   var FORM = "https://formspree.io/f/maeoqrdp";
   var WIKI = "https://en.wikipedia.org/w/api.php?action=parse&page=List_of_high_schools_in_Washington_(state)&prop=text&format=json&formatversion=2&origin=*";
-  var CACHE = "wa-hs-v2", LOOKS = "wa-hs-looks-v1";
+  var CACHE = "wa-hs-v2", LOOKS = "wa-hs-looks-v2", ANY_LOGO = false;
   var NOT_PUBLIC = /christian|catholic|adventist|lutheran|baptist|jesuit|seminary|holy names|bishop|saint |st\. |bible|islamic|jewish|waldorf|montessori|juvenile|detention|correction|justice center|overlake|annie wright|charles wright|bush school|lakeside school|northwest school|forest ridge|bellarmine|o'dea|gonzaga|archbishop|seattle academy|university prep|eastside prep|tri-cities prep|dartmoor|king's|cristo rey|private/i;
   var RED = "#e0141e";
 
@@ -30,6 +30,7 @@
     + "#schools .sc-open[data-look] .sc-box b,#schools .sc-open[data-look] .sc-who{color:var(--s1d)}"
     + "#schools .sc-open[data-look] .sc-call,#schools .sc-open[data-look] .sc-send{background:var(--s1);color:var(--s1t)!important;box-shadow:0 0 0 3px var(--s2)}"
     + "#schools .sc-emb{float:right;width:92px;height:104px;margin:0 0 8px 12px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.2));animation:scEmb .6s cubic-bezier(.2,.8,.2,1)}"
+    + "#schools .sc-logo{object-fit:contain;background:#fff;border-radius:16px;padding:6px;box-sizing:border-box}"
     + "@keyframes scEmb{from{transform:scale(.6) rotate(-8deg);opacity:0}}"
     + "#schools .sc-mascot{display:inline-block;margin-top:8px;font-weight:800;color:var(--s1t);background:var(--s1);border:2px solid var(--s2);border-radius:999px;padding:4px 12px}"
     + "#schools .sc-cols{display:flex;gap:6px;margin-top:8px}#schools .sc-cols i{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}"
@@ -130,15 +131,36 @@
     cols.sort(function (a, b) { return (lum(a) > .8) - (lum(b) > .8); });
     var mascot = clean(field(txt, "mascot|nickname|team_name|athletics_nickname")).replace(/^the\s+/i, "").split(/[,;(]| and /)[0].trim();
     if (mascot.length > 40) mascot = "";
-    if (!cols.length && !mascot) return null;
-    return { c: cols, m: mascot };
+    // Logo file from the infobox. "image" is often a photo of the building, so take it only if its name says logo.
+    var file = (function () {
+      var f = ["logo", "seal", "emblem", "crest"].map(function (k) { return field(txt, k); }).filter(Boolean)[0];
+      if (!f) { f = field(txt, "image"); if (!/logo|seal|emblem|crest|mascot/i.test(f)) f = ""; }
+      f = f.replace(/^\[\[/, "").replace(/^(file|image):/i, "").split(/[|\]]/)[0].replace(/<!--[\s\S]*?-->/g, "").trim();
+      return /\.(png|svg|jpe?g|gif|webp)$/i.test(f) ? f : "";
+    })();
+    if (!cols.length && !mascot && !file) return null;
+    return { c: cols, m: mascot, f: file };
   }
   function lookStyle(lk) {
     if (!lk || !lk.c || !lk.c.length) return "";
     var a = lk.c[0], b = lk.c[1] || "#ffffff", light = lum(a) > .45;
     return ' data-look="1" style="--s1:' + a + ";--s2:" + b + ";--s1t:" + (light ? "#000" : "#fff") + ";--s1d:" + (light ? "#333" : a) + '"';
   }
+  // Real logo: shown only when it is freely licensed on Wikimedia Commons, unless ANY_LOGO is true.
+  function getLogo(lk) {
+    if (!lk || !lk.f || "u" in lk) return;
+    lk.u = 0;
+    fetch("https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&iiurlwidth=240&format=json&formatversion=2&origin=*&titles=" + encodeURIComponent("File:" + lk.f))
+      .then(function (r) { return r.json(); }).then(function (j) {
+        var p = j.query && j.query.pages && j.query.pages[0], ii = p && p.imageinfo && p.imageinfo[0];
+        if (ii && (ANY_LOGO || p.imagerepository === "shared")) lk.u = ii.thumburl || ii.url;
+        saveLooks();
+        if (lk.u && document.querySelector("#schools .sc-open")) { var y = window.scrollY; render(); window.scrollTo(0, y); }
+      }).catch(function () {});
+  }
   function emblem(s, lk) {
+    if (lk && lk.u) return '<img class="sc-emb sc-logo" src="' + esc(lk.u) + '" alt="' + esc(s.n) + ' logo" referrerpolicy="no-referrer">';
+    getLogo(lk);
     if (!lk || !lk.c || !lk.c.length) return "";
     var a = lk.c[0], b = lk.c[1] || "#ffffff", fg = lum(a) > .45 ? "#111" : "#fff";
     var ch = esc((lk.m || s.n).charAt(0).toUpperCase());
