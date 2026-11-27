@@ -2,6 +2,7 @@
    Each section gets an "Expand" button (and its picture can be clicked too).
    The real section moves into a full-screen view, so everything in it still works,
    and goes back where it was when you close it (Close button, Esc, or click outside).
+   While a section is open, scrolling moves that section, never the page behind it.
    Remove the <script src="expand.js"> line in index.html to take it off. */
 (() => {
   const RED = '#e0141e';
@@ -27,7 +28,10 @@
 .xp-box .vz{height:clamp(170px,26vw,300px);cursor:default}
 .xp-box #map3d .m3-stage{height:calc(100vh - 210px);min-height:420px}
 .xp-box .hs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:24px;background:#fff;border-radius:22px}
-body.xp-lock{overflow:hidden}
+html.xp-lock,body.xp-lock{overflow:hidden!important;overscroll-behavior:none}
+.xp-ov,.hs-dlg{overscroll-behavior:contain}
+.xp-box .hs-list{max-height:none}
+html:has(dialog.hs-dlg[open]),html:has(dialog.hs-dlg[open]) body{overflow:hidden}
 @media (max-width:640px){.xp-ov{padding:12px 8px 30px}.xp-box #map3d .m3-stage{height:calc(100vh - 230px);min-height:340px}}
 `;
   const ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 2h4v4M6 14H2v-4M14 2L9 7M2 14l5-5"/></svg>';
@@ -41,7 +45,7 @@ body.xp-lock{overflow:hidden}
     ov.classList.remove('on');
     setTimeout(() => {
       mark.parentNode.insertBefore(sec, mark); mark.remove(); ov.remove();
-      document.body.classList.remove('xp-lock');
+      document.body.classList.remove('xp-lock'); document.documentElement.classList.remove('xp-lock');
       window.dispatchEvent(new Event('resize'));
       if (back) back.focus({ preventScroll: true });
       sec.scrollIntoView({ block: 'start' });
@@ -62,7 +66,7 @@ body.xp-lock{overflow:hidden}
     x.type = 'button'; x.className = 'xp-close'; x.textContent = '✕ ' + T('Close', 'Cerrar');
     box.appendChild(x); box.appendChild(sec); ov.appendChild(box);
     document.body.appendChild(ov);
-    document.body.classList.add('xp-lock');
+    document.body.classList.add('xp-lock'); document.documentElement.classList.add('xp-lock');
     open = { ov, sec, mark, back: from };
     // Replay the section picture so it draws in again, bigger.
     const vz = sec.querySelector('.vz');
