@@ -7,7 +7,8 @@
   const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const css = `
-.vz{position:relative;height:118px;margin:2px 0 14px;border-radius:18px;overflow:hidden;
+#cameras.hs-card{grid-template-columns:minmax(0,1fr)}
+.vz{position:relative;min-width:0;height:118px;margin:2px 0 14px;border-radius:18px;overflow:hidden;
   background:radial-gradient(ellipse at 80% 0%,rgba(224,20,30,.10),rgba(224,20,30,0) 60%),linear-gradient(180deg,#fff,#fbf5f5);box-shadow:inset 0 0 0 1px rgba(224,20,30,.12)}
 .vz svg{position:absolute;inset:0;width:100%;height:100%}
 .vz .ln{fill:none;stroke:${INK};stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s cubic-bezier(.3,.7,.2,1)}
@@ -134,7 +135,8 @@
   function place(id, html) {
     const sec = document.getElementById(id);
     if (!sec || sec.querySelector(':scope > .vz')) return false;
-    const h2 = sec.querySelector(':scope > h2');
+    // The page wraps some headings in a .hs-cardhead box; put the picture under that box.
+    const h2 = sec.querySelector(':scope > .hs-cardhead') || sec.querySelector(':scope > h2');
     if (!h2) return false;
     const box = document.createElement('div');
     box.className = 'vz';
