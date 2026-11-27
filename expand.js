@@ -60,6 +60,7 @@ html:has(dialog.hs-dlg[open]),html:has(dialog.hs-dlg[open]) body{overflow:hidden
     ov.className = 'xp-ov';
     ov.setAttribute('role', 'dialog');
     ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('data-lenis-prevent', '');
     const box = document.createElement('div');
     box.className = 'xp-box';
     const x = document.createElement('button');
@@ -103,6 +104,21 @@ html:has(dialog.hs-dlg[open]),html:has(dialog.hs-dlg[open]) body{overflow:hidden
       if (sec) { e.stopPropagation(); expand(sec, null); }
     }, true);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    // The page's smooth scrolling (Lenis) takes every mouse-wheel turn and moves the whole page,
+    // so boxes that scroll on their own (school list, every report, details, an open section) never moved.
+    // Before Lenis sees the wheel, mark the box under the mouse so it scrolls itself while it still can.
+    document.addEventListener('wheel', (e) => {
+      let el = e.target instanceof Element ? e.target : null;
+      while (el && el !== document.body && el !== document.documentElement) {
+        if (el.classList.contains('xp-ov')) return;
+        if (/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 1) {
+          const can = e.deltaY > 0 ? el.scrollTop + el.clientHeight < el.scrollHeight - 1 : el.scrollTop > 0;
+          if (can) { el.setAttribute('data-lenis-prevent', ''); return; }
+          el.removeAttribute('data-lenis-prevent');
+        }
+        el = el.parentElement;
+      }
+    }, { capture: true, passive: true });
     scan();
     // Some sections (schools, map) are added by other scripts after load.
     let n = 0; const t = setInterval(() => { scan(); if (++n > 20) clearInterval(t); }, 600);
