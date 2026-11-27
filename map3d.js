@@ -72,6 +72,18 @@
 #map3d .m3-top span{margin-left:auto;font-weight:800}
 #map3d .m3-tip{position:absolute;z-index:5;pointer-events:none;background:#111;color:#fff;font-size:.9rem;padding:6px 10px;border-radius:10px;transform:translate(-50%,-130%);white-space:nowrap;opacity:0;transition:opacity .15s}
 #map3d .m3-tip.on{opacity:1}
+#map3d .m3-col.hit .m3-face{filter:brightness(1.35) saturate(1.3)}
+#map3d .m3-col.hit .m3-dot{animation:none;transform:scale(2.2)}
+#map3d .m3-more{display:block;width:100%;margin-top:6px;font:inherit;font-weight:800;font-size:.8rem;color:${RED};background:none;border:1px solid ${RED};border-radius:999px;padding:4px 10px;cursor:pointer}
+#map3d .m3-top div{cursor:pointer}
+#map3d .m3-all{margin-top:14px}
+#map3d .m3-all summary{display:inline-block;cursor:pointer;font-weight:800;color:#fff;background:${RED};border-radius:999px;padding:8px 18px;list-style:none}
+#map3d .m3-all summary::-webkit-details-marker{display:none}
+#map3d .m3-rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 18px;margin-top:12px}
+#map3d .m3-row{display:flex;align-items:center;gap:8px;font:inherit;text-align:left;background:#fff;border:1px solid #eee;border-radius:12px;padding:6px 10px;cursor:pointer;color:#111}
+#map3d .m3-row:hover,#map3d .m3-row.on{border-color:${RED}}
+#map3d .m3-row i{flex:0 0 auto;height:7px;border-radius:4px;background:linear-gradient(90deg,#ff8a8a,${RED})}
+#map3d .m3-row b{margin-left:auto;color:${RED}}
 @media (max-width:640px){#map3d .m3-stage{height:420px;border-radius:18px}#map3d .m3-top{display:none}#map3d .m3-ctl button{padding:7px 11px}}
 `;
 
@@ -82,11 +94,12 @@
     sec.className = 'hs-card';
     sec.id = 'map3d';
     sec.innerHTML = '<h2>' + T('Map of reports', 'Mapa de reportes') + '</h2>'
-      + '<p class="note">' + T('Each red column stands on a town. The taller the column, the more reports there. Click the map to see it in 3D, then drag to turn it.', 'Cada columna roja está sobre una ciudad. Cuanto más alta, más reportes. Haz clic en el mapa para verlo en 3D y arrastra para girarlo.') + '</p>'
+      + '<p class="note">' + T('Each red column stands on a town. The taller the column, the more reports there. Click the map to see it in 3D, then drag to turn it. Tap any column to see its number.', 'Cada columna roja está sobre una ciudad. Cuanto más alta, más reportes. Haz clic en el mapa para verlo en 3D y arrastra para girarlo. Toca una columna para ver su número.') + '</p>'
       + '<div class="m3-stage" role="img"><div class="m3-world"></div>'
       + '<div class="m3-veil"><button class="m3-go" type="button">' + T('View in 3D', 'Ver en 3D') + '</button></div>'
       + '<div class="m3-ctl" hidden><button type="button" data-v="2d">' + T('Flat', 'Plano') + '</button><button type="button" data-v="3d" class="on">3D</button><button type="button" data-v="spin">' + T('Spin', 'Girar') + '</button></div>'
-      + '<div class="m3-top" hidden></div><div class="m3-tip"></div></div>';
+      + '<div class="m3-top" hidden></div><div class="m3-tip"></div></div>'
+      + '<details class="m3-all"><summary></summary><div class="m3-rows"></div></details>';
     const after = document.getElementById('totals');
     if (after && after.parentNode) after.parentNode.insertBefore(sec, after.nextSibling);
     else (document.querySelector('main') || document.body).appendChild(sec);
@@ -133,7 +146,11 @@
       world.appendChild(l);
     });
     sec.querySelector('.m3-top').innerHTML = '<b>' + T('Most reports', 'Más reportes') + '</b>'
-      + sorted.slice(0, 5).map(([t, n]) => '<div>' + t + ' <i style="width:' + Math.round(16 + 56 * n / max) + 'px"></i><span>' + n + '</span></div>').join('');
+      + sorted.slice(0, 5).map(([t, n]) => '<div data-t="' + t + '">' + t + ' <i style="width:' + Math.round(16 + 56 * n / max) + 'px"></i><span>' + n + '</span></div>').join('')
+      + (sorted.length > 5 ? '<button type="button" class="m3-more">+ ' + (sorted.length - 5) + ' ' + T('more towns', 'ciudades más') + '</button>' : '');
+    const all = sec.querySelector('.m3-all');
+    all.querySelector('summary').textContent = T('See all ' + sorted.length + ' towns and their reports', 'Ver las ' + sorted.length + ' ciudades y sus reportes');
+    all.querySelector('.m3-rows').innerHTML = sorted.map(([t, n], i) => '<button type="button" class="m3-row" data-t="' + t + '"><span>' + (i + 1) + '. ' + t + '</span><i style="width:' + Math.round(10 + 50 * n / max) + 'px"></i><b>' + n + '</b></button>').join('');
 
     // Labels sit inside the tilted world, so they need the same counter-rotation as the bars.
     let fit = 1, tilt = 0, turn = 0, is3d = false, spin = false, raf = 0;
@@ -173,16 +190,49 @@
     stage.addEventListener('pointerdown', (e) => { if (e.target.closest('.m3-ctl')) return; down = { x: e.clientX, turn }; moved = false; });
     stage.addEventListener('pointermove', (e) => {
       const c = e.target.closest('.m3-col');
-      if (c) { const r = stage.getBoundingClientRect(); tip.textContent = c.dataset.t + ': ' + c.dataset.n + ' ' + (c.dataset.n === '1' ? T('report', 'reporte') : T('reports', 'reportes')); tip.style.left = (e.clientX - r.left) + 'px'; tip.style.top = (e.clientY - r.top) + 'px'; tip.classList.add('on'); }
-      else tip.classList.remove('on');
+      if (c && !pinned) { const r = stage.getBoundingClientRect(); tip.textContent = c.dataset.t + ': ' + c.dataset.n + ' ' + (c.dataset.n === '1' ? T('report', 'reporte') : T('reports', 'reportes')); tip.style.left = (e.clientX - r.left) + 'px'; tip.style.top = (e.clientY - r.top) + 'px'; tip.classList.add('on'); }
+      else if (!pinned) tip.classList.remove('on');
       if (!down || !is3d) return;
       const dx = e.clientX - down.x;
-      if (Math.abs(dx) > 4) { moved = true; stopSpin(); mark('3d'); world.classList.add('drag'); turn = down.turn - dx * 0.25; apply(); }
+      if (Math.abs(dx) > 4) { moved = true; if (pinned) unpin(); stopSpin(); mark('3d'); world.classList.add('drag'); turn = down.turn - dx * 0.25; apply(); }
     });
     const up = () => { if (down && !moved && !is3d) go3d(); down = null; if (!spin) world.classList.remove('drag'); };
     stage.addEventListener('pointerup', up);
     sec.querySelector('.m3-go').addEventListener('click', go3d);
-    stage.addEventListener('pointerleave', () => { tip.classList.remove('on'); down = null; if (!spin) world.classList.remove('drag'); });
+    stage.addEventListener('pointerleave', () => { if (!pinned) tip.classList.remove('on'); down = null; if (!spin) world.classList.remove('drag'); });
+
+    // Tap a column, a legend row or a list row to see that town's number on the map.
+    const say = (t, n) => t + ': ' + n + ' ' + (String(n) === '1' ? T('report', 'reporte') : T('reports', 'reportes'));
+    let pinned = null;
+    const pick = (town) => {
+      world.querySelectorAll('.m3-col.hit').forEach((c) => c.classList.remove('hit'));
+      sec.querySelectorAll('.m3-row.on').forEach((r) => r.classList.toggle('on', false));
+      const c = [...world.querySelectorAll('.m3-col')].find((x) => x.dataset.t === town);
+      if (!c) return;
+      if (!is3d) go3d();
+      c.classList.add('hit'); pinned = c;
+      sec.querySelectorAll('.m3-row').forEach((r) => r.classList.toggle('on', r.dataset.t === town));
+      const place = () => { if (pinned !== c) return; const r = stage.getBoundingClientRect(), d = c.querySelector('.m3-dot').getBoundingClientRect(); tip.textContent = say(c.dataset.t, c.dataset.n); tip.style.left = (d.left + d.width / 2 - r.left) + 'px'; tip.style.top = (d.top + d.height / 2 - r.top) + 'px'; tip.classList.add('on'); };
+      place(); setTimeout(place, 900); setTimeout(place, 2500);
+    };
+    const unpin = () => { pinned = null; world.querySelectorAll('.m3-col.hit').forEach((c) => c.classList.remove('hit')); sec.querySelectorAll('.m3-row.on').forEach((r) => r.classList.remove('on')); tip.classList.remove('on'); };
+    const top = sec.querySelector('.m3-top');
+    top.addEventListener('pointerdown', (e) => e.stopPropagation());
+    top.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.target.closest('.m3-more')) { all.open = true; all.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+      const row = e.target.closest('[data-t]'); if (row) pick(row.dataset.t);
+    });
+    all.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = e.target.closest('.m3-row'); if (!row) return;
+      pick(row.dataset.t); stage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    stage.addEventListener('click', (e) => {
+      if (moved || e.target.closest('.m3-ctl,.m3-top')) return;
+      const c = e.target.closest('.m3-col');
+      if (c) pick(c.dataset.t); else if (pinned) unpin();
+    });
 
     size();
     window.addEventListener('resize', size);
