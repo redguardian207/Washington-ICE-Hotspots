@@ -26,6 +26,7 @@
     'Redmond': [47.6694, -122.1239], 'Puyallup': [47.1849, -122.2921], 'Hoodsport': [47.402, -123.1535],
     'Fife': [47.236, -122.3626], 'Spokane Valley': [47.6571, -117.2614]
   };
+  window.WA_GEO = GEO; // shared with near-me.js (address lookup)
 
   // Washington State outline (simplified, public domain US state boundaries).
   const WA = [
